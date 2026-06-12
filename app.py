@@ -9,7 +9,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("💰 Group Term Life Insurance Premium Calculator")
+st.title("💰 Aviva GCL Insurance Premium Calculator")
 st.markdown("Select plan details below")
 
 FILE_MAP = {
