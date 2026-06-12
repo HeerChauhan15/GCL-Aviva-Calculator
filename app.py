@@ -14,9 +14,7 @@ st.markdown("Select plan details and upload your Excel file for premium calculat
 
 GST_RATE = 0.18
 
-# Map selections to file names (files must be in same folder as app.py)
 FILE_MAP = {
-    FILE_MAP = {
     ("Single Life", "Home Loan"): "Aviva Single HomeLoan.xlsx",
     ("Single Life", "LAP"):       "Aviva Single Lap.xlsx",
     ("Joint Life",  "Home Loan"): "Aviva Joint Homeloan.xlsx",
@@ -136,44 +134,3 @@ if uploaded_file is not None:
                 member_age = int(row['MAIN MEMBER AGE']) if pd.notna(row['MAIN MEMBER AGE']) and row['MAIN MEMBER AGE'] != 0 else age
                 r = get_rate(df_rates, tenure_map, member_age, tenure)
                 return (row['Sum Assured'] / 100000) * r
-            except:
-                try:
-                    r = get_rate(df_rates, tenure_map, age, tenure)
-                    return (row['Sum Assured'] / 100000) * r
-                except:
-                    return 0
-
-        df['Premium Excl GST'] = df.apply(calc_premium, axis=1)
-        df['Premium + GST'] = df['Premium Excl GST'] * (1 + GST_RATE)
-
-        output_columns = [
-            'Loan Account No.', 'Name of Primary Loan borrower', 'Mobile No',
-            'MAIN MEMBER AGE', 'Sum Assured', 'Premium Excl GST', 'Premium + GST'
-        ]
-        final_df = df[output_columns]
-
-        st.subheader("Portfolio Summary")
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            st.metric("Total Members", len(final_df))
-        with c2:
-            st.metric("Total Sum Assured", f"₹ {final_df['Sum Assured'].sum():,.0f}")
-        with c3:
-            st.metric("Total Premium (incl. GST)", f"₹ {final_df['Premium + GST'].sum():,.2f}")
-
-        st.subheader("Premium Calculation Output")
-        st.dataframe(final_df, use_container_width=True)
-
-        output_file = "Premium_Output.xlsx"
-        final_df.to_excel(output_file, index=False)
-
-        with open(output_file, "rb") as file:
-            st.download_button(
-                label="⬇ Download Output Excel",
-                data=file,
-                file_name=output_file,
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-
-    except Exception as e:
-        st.error(f"Error: {e}")
