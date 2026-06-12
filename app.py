@@ -16,10 +16,11 @@ GST_RATE = 0.18
 
 # Map selections to file names (files must be in same folder as app.py)
 FILE_MAP = {
-    ("Single Life", "Home Loan"): "Aviva_Single_HomeLoan.xlsx",
-    ("Single Life", "LAP"):       "Aviva_Single_Lap.xlsx",
-    ("Joint Life",  "Home Loan"): "Aviva_Joint_Homeloan.xlsx",
-    ("Joint Life",  "LAP"):       "Aviva_Joint_Lap.xlsx",
+    FILE_MAP = {
+    ("Single Life", "Home Loan"): "Aviva Single HomeLoan.xlsx",
+    ("Single Life", "LAP"):       "Aviva Single Lap.xlsx",
+    ("Joint Life",  "Home Loan"): "Aviva Joint Homeloan.xlsx",
+    ("Joint Life",  "LAP"):       "Aviva Joint Lap.xlsx",
 }
 
 def load_rate_table(life_type, loan_type):
