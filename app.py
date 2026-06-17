@@ -109,7 +109,7 @@ st.divider()
 # ============================================
 
 st.subheader("📂 Upload Member Data for Bulk Rate Lookup")
-st.markdown("Your Excel must have at least: **Name**, **Age**, **Tenure** (tenure in months will be auto-converted to years)")
+st.markdown("Your Excel must have at least: **Name**, **Age**, **Tenure** (in years)")
 st.warning("⚠️ Please make sure you have selected **Life Type** and **Loan Type** above before uploading your Excel file.")
 
 uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx"])
