@@ -122,33 +122,15 @@ if uploaded_file is not None:
         st.subheader("Uploaded Data Preview")
         st.dataframe(df.head())
 
-        # Find Name column
-        name_col = None
-        for c in df.columns:
-            if "name" in c.lower():
-                name_col = c
-                break
-        if name_col is None:
-            raise ValueError("Could not find a 'Name' column.")
+        # Mandatory columns check
+        name_col = next((c for c in df.columns if "name" in c.lower()), None)
+        age_col = next((c for c in df.columns if "age" in c.lower()), None)
+        tenure_col = next((c for c in df.columns if "tenure" in c.lower()), None)
 
-        # Find Age column
-        age_col = None
-        for c in df.columns:
-            if "age" in c.lower():
-                age_col = c
-                break
-        if age_col is None:
-            raise ValueError("Could not find an 'Age' column.")
+        if not name_col or not age_col or not tenure_col:
+            raise ValueError("Excel must contain mandatory columns: Name, Age, Tenure")
 
-        # Find Tenure column
-        tenure_col = None
-        for c in df.columns:
-            if "tenure" in c.lower():
-                tenure_col = c
-                break
-        if tenure_col is None:
-            raise ValueError("Could not find a 'Tenure' column.")
-
+        # Convert Age and Tenure to numeric
         df[age_col] = pd.to_numeric(df[age_col], errors='coerce')
         df[tenure_col] = pd.to_numeric(df[tenure_col], errors='coerce')
 
