@@ -89,8 +89,12 @@ st.subheader("🔢 Manual Rate Lookup")
 col3, col4 = st.columns(2)
 with col3:
     age = st.number_input("Enter Age", min_value=18, max_value=65, value=30, step=1)
+
+# tenure limits based on loan type
+max_tenure = 25 if loan_type == "Home Loan" else 10
+
 with col4:
-    tenure = st.number_input("Enter Tenure", min_value=2, max_value=30, value=5, step=1)
+    tenure = st.number_input("Enter Tenure", min_value=2, max_value=max_tenure, value=5, step=1)
     st.caption("📅 Tenure is in Years")
 
 if st.button("Get Rate", type="primary"):
@@ -142,6 +146,10 @@ if uploaded_file is not None:
             df[tenure_col] = df[tenure_col].round(0).astype('Int64')
 
         df[age_col] = df[age_col].round(0).astype('Int64')
+
+        # Apply tenure limits based on loan type
+        max_tenure = 25 if loan_type == "Home Loan" else 10
+        df[tenure_col] = df[tenure_col].clip(lower=2, upper=max_tenure)
 
         df_rates, tenure_map = load_rate_table(life_type, loan_type)
 
