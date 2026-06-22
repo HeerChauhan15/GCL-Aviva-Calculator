@@ -88,7 +88,7 @@ st.subheader("🔢 Manual Rate Lookup")
 
 col3, col4 = st.columns(2)
 with col3:
-    age = st.number_input("Enter Age", min_value=18, max_value=70, value=30, step=1)
+    age = st.number_input("Enter Age", min_value=18, max_value=65, value=30, step=1)
 with col4:
     tenure = st.number_input("Enter Tenure", min_value=2, max_value=30, value=5, step=1)
     st.caption("📅 Tenure is in Years")
