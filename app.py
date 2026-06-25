@@ -92,7 +92,7 @@ if loan_type == "Home Loan":
 else:
     min_tenure, max_tenure = 2, 10
 
-# Inputs for Single Life
+# Inputs for first person (always shown)
 col3, col4 = st.columns(2)
 with col3:
     age = st.number_input("Enter Age", min_value=18, max_value=65, value=30, step=1)
@@ -106,7 +106,7 @@ with col4:
     )
     st.caption("📅 Tenure is in Years")
 
-# Extra inputs for Joint Life
+# Extra inputs only if Joint Life is selected
 if life_type == "Joint Life":
     st.markdown("### 👥 Second Person Details")
     col5, col6 = st.columns(2)
@@ -147,7 +147,7 @@ if st.button("Get Rate", type="primary"):
 st.divider()
 
 # ============================================
-# EXCEL UPLOAD SECTION
+# EXCEL UPLOAD SECTION (unchanged)
 # ============================================
 
 st.subheader("📂 Upload Member Data for Bulk Rate Lookup")
