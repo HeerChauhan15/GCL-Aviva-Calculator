@@ -115,6 +115,9 @@ def map_joint_columns(df):
     Flexibly detect Main Borrower / Co Borrower Name/Age/Tenure columns
     regardless of exact header wording (Main Borrower Name, MB Name, Name1,
     Borrower 1 Name, etc.)
+
+    Note: Co Borrower Tenure is intentionally NOT looked for — the loan tenure
+    is shared, so Co Borrower's premium always uses Main Borrower's Tenure.
     """
     mapping = {}  # (person, field) -> actual column name
     for col in df.columns:
@@ -124,6 +127,9 @@ def map_joint_columns(df):
             continue
         person = detect_person(norm)
         if person is None:
+            continue
+        if person == 'co' and field == 'tenure':
+            # Co Borrower tenure is ignored; Main Borrower tenure is used for both.
             continue
         key = (person, field)
         if key not in mapping:
@@ -221,15 +227,8 @@ else:
     st.caption("📅 Tenure is in Years")
 
     st.markdown("**Co Borrower**")
-    ccol1, ccol2 = st.columns(2)
-    with ccol1:
-        co_age = st.number_input("Age", min_value=18, max_value=65, value=30, step=1, key="co_age_manual")
-    with ccol2:
-        co_tenure = st.number_input(
-            "Tenure", min_value=min_tenure, max_value=max_tenure,
-            value=min_tenure, step=1, key="co_tenure_manual"
-        )
-    st.caption("📅 Tenure is in Years")
+    co_age = st.number_input("Age", min_value=18, max_value=65, value=30, step=1, key="co_age_manual")
+    st.caption("📅 Co Borrower Tenure is the same as Main Borrower Tenure (loan tenure is shared)")
 
     if st.button("Get Rate", type="primary"):
         try:
@@ -238,7 +237,8 @@ else:
             rate_main = get_rate(df_rates, tenure_map, main_age, main_tenure)
             premium_main = rate_main * (sum_assured / 100000)
 
-            rate_co = get_rate(df_rates, tenure_map, co_age, co_tenure)
+            # Co Borrower uses Main Borrower's tenure (shared loan tenure)
+            rate_co = get_rate(df_rates, tenure_map, co_age, main_tenure)
             premium_co = rate_co * (sum_assured / 100000)
 
             total_premium = premium_main + premium_co
@@ -246,7 +246,7 @@ else:
             st.success(
                 f"✅ {life_type} | {loan_type} | Sum Assured ₹{sum_assured:,} | "
                 f"Main Borrower: Age {main_age}, Tenure {main_tenure} yrs | "
-                f"Co Borrower: Age {co_age}, Tenure {co_tenure} yrs"
+                f"Co Borrower: Age {co_age}, Tenure {main_tenure} yrs (same as Main Borrower)"
             )
 
             col_a, col_b, col_c = st.columns(3)
@@ -276,7 +276,10 @@ if life_type == "Single Life":
 else:
     st.markdown(
         "Your Excel must have at least: **Main Borrower** (Name, Age, Tenure) and "
-        "**Co Borrower** (Name, Age, Tenure) — in years. "
+        "**Co Borrower** (Name, Age) — in years. "
+        "Co Borrower's Tenure is **not required** — it is always assumed to be the same as "
+        "Main Borrower's Tenure, since the loan tenure is shared between borrowers. "
+        "If your file has a Co Borrower Tenure column, it will simply be ignored. "
         "You may also include a **Sum Assured** column — if not provided, the Sum Assured "
         "selected above will be used for all entries."
     )
@@ -383,9 +386,11 @@ if uploaded_file is not None:
             mapping = map_joint_columns(df)
             sa_col = find_sum_assured_column(df)
 
+            # Note: Co Borrower Tenure is intentionally not required — the loan
+            # tenure is shared, so Main Borrower's Tenure is used for both.
             required_keys = [
                 ('main', 'name'), ('main', 'age'), ('main', 'tenure'),
-                ('co', 'name'), ('co', 'age'), ('co', 'tenure'),
+                ('co', 'name'), ('co', 'age'),
             ]
             missing = [f"{p.capitalize()} Borrower {f.capitalize()}" for (p, f) in required_keys if (p, f) not in mapping]
 
@@ -393,8 +398,9 @@ if uploaded_file is not None:
                 raise ValueError(
                     "Could not detect these mandatory columns: " + ", ".join(missing) +
                     ". Please make sure your Excel has Main Borrower & Co Borrower "
-                    "Name/Age/Tenure columns (any reasonable naming works, e.g. "
-                    "'Main Borrower Age', 'MB Age', 'Age1')."
+                    "Name/Age columns and a Main Borrower Tenure column (any reasonable naming "
+                    "works, e.g. 'Main Borrower Age', 'MB Age', 'Age1'). Co Borrower Tenure is "
+                    "not needed — Main Borrower's Tenure is used for both borrowers."
                 )
 
             main_name_col = mapping[('main', 'name')]
@@ -402,22 +408,21 @@ if uploaded_file is not None:
             main_tenure_col = mapping[('main', 'tenure')]
             co_name_col = mapping[('co', 'name')]
             co_age_col = mapping[('co', 'age')]
-            co_tenure_col = mapping[('co', 'tenure')]
 
-            for c in [main_age_col, main_tenure_col, co_age_col, co_tenure_col]:
+            for c in [main_age_col, main_tenure_col, co_age_col]:
                 df[c] = pd.to_numeric(df[c], errors='coerce')
 
-            for tcol, label in [(main_tenure_col, "Main Borrower Tenure"), (co_tenure_col, "Co Borrower Tenure")]:
-                if df[tcol].dropna().median() > 30:
-                    st.info(f"ℹ️ {label} values look like months — auto-converting to years.")
-                    df[tcol] = (df[tcol] / 12).round(0).astype('Int64')
-                else:
-                    df[tcol] = df[tcol].round(0).astype('Int64')
+            if df[main_tenure_col].dropna().median() > 30:
+                st.info("ℹ️ Main Borrower Tenure values look like months — auto-converting to years.")
+                df[main_tenure_col] = (df[main_tenure_col] / 12).round(0).astype('Int64')
+            else:
+                df[main_tenure_col] = df[main_tenure_col].round(0).astype('Int64')
 
             df[main_age_col] = df[main_age_col].round(0).astype('Int64')
             df[co_age_col] = df[co_age_col].round(0).astype('Int64')
             df[main_tenure_col] = df[main_tenure_col].clip(lower=min_t, upper=max_t)
-            df[co_tenure_col] = df[co_tenure_col].clip(lower=min_t, upper=max_t)
+
+            st.info("ℹ️ Co Borrower Tenure is assumed to be the same as Main Borrower Tenure for all rows.")
 
             if sa_col:
                 st.info(f"ℹ️ Found '{sa_col}' column — using per-row Sum Assured (capped to ₹{sa_min:,}–₹{sa_max:,}).")
@@ -447,7 +452,7 @@ if uploaded_file is not None:
 
                 try:
                     r_age = int(row[co_age_col])
-                    r_tenure = int(row[co_tenure_col])
+                    r_tenure = int(row[main_tenure_col])  # Co Borrower uses Main Borrower's tenure
                     rate_co = get_rate(df_rates, tenure_map, r_age, r_tenure)
                     p_co = round(rate_co * (row_sa / 100000), 2)
                 except Exception as e:
@@ -465,7 +470,7 @@ if uploaded_file is not None:
 
             core_cols = [
                 main_name_col, main_age_col, main_tenure_col, "Main Borrower Premium",
-                co_name_col, co_age_col, co_tenure_col, "Co Borrower Premium",
+                co_name_col, co_age_col, "Co Borrower Premium",
                 "Total Premium"
             ]
             extra_cols = [c for c in df.columns if c not in core_cols]
@@ -495,15 +500,16 @@ if uploaded_file is not None:
             center = Alignment(horizontal="center", vertical="center")
 
             n_extra = len(extra_cols)
-            # Column positions (1-indexed): Main group = cols 1-4, Co group = cols 5-8,
-            # Total Premium = col 9, extras start at col 10
+            # Column positions (1-indexed): Main group = cols 1-4 (Name, Age, Tenure, Premium),
+            # Co group = cols 5-7 (Name, Age, Premium — no Tenure since it's shared with Main),
+            # Total Premium = col 8, extras start at col 9
             main_start, main_end = 1, 4
-            co_start, co_end = 5, 8
-            total_col = 9
-            extra_start = 10
+            co_start, co_end = 5, 7
+            total_col = 8
+            extra_start = 9
 
             # Row 2: sub-headers (actual field names)
-            row2_labels = ["Name", "Age", "Tenure", "Premium", "Name", "Age", "Tenure", "Premium", "Total Premium"] + extra_cols
+            row2_labels = ["Name", "Age", "Tenure", "Premium", "Name", "Age", "Premium", "Total Premium"] + extra_cols
             for idx, label in enumerate(row2_labels, start=1):
                 cell = ws.cell(row=2, column=idx, value=label)
                 cell.font = bold
