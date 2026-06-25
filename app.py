@@ -190,7 +190,7 @@ if life_type == "Single Life":
 else:
     st.markdown(
         "Your Excel must have at least: **Main Borrower** (Name, Age, Tenure) and "
-        "**Co Borrower** (Name, Age, Tenure) — in years. "
+        "**Co Borrower** (Name, Age, Tenure) — in years."
     )
 
 st.warning("⚠️ Please make sure you have selected **Life Type** and **Loan Type** above before uploading your Excel file.")
