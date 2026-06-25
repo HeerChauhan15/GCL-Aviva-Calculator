@@ -131,6 +131,15 @@ def map_joint_columns(df):
     return mapping
 
 
+def find_sum_assured_column(df):
+    """Flexibly detect an optional Sum Assured / Sum Insured / Loan Amount column."""
+    for col in df.columns:
+        norm = _normalize(col)
+        if 'sumassured' in norm or 'suminsured' in norm or 'loanamount' in norm:
+            return col
+    return None
+
+
 # ============================================
 # DROPDOWNS
 # ============================================
@@ -140,6 +149,24 @@ with col1:
     life_type = st.selectbox("Select Life Type", ["Single Life", "Joint Life"])
 with col2:
     loan_type = st.selectbox("Select Loan Type", ["Home Loan", "LAP"])
+
+# ============================================
+# SUM ASSURED (mandatory) — rates in the backend files are per ₹1,00,000
+# ============================================
+if loan_type == "Home Loan":
+    sa_min, sa_max = 100000, 6000000
+else:
+    sa_min, sa_max = 100000, 4000000
+
+sum_assured = st.number_input(
+    "Select Sum Assured (₹)",
+    min_value=sa_min,
+    max_value=sa_max,
+    value=sa_min,
+    step=100000,
+    help=f"For {loan_type}, Sum Assured must be between ₹{sa_min:,} and ₹{sa_max:,}."
+)
+st.caption(f"📌 Allowed range for {loan_type}: ₹{sa_min:,} – ₹{sa_max:,}")
 
 st.divider()
 
@@ -172,8 +199,13 @@ if st.button("Get Rate", type="primary"):
     try:
         df_rates, tenure_map = load_rate_table(life_type, loan_type)
         rate = get_rate(df_rates, tenure_map, age, tenure)
-        st.success(f"✅ {life_type} | {loan_type} | Age {age} | Tenure {tenure} yrs")
-        st.metric("Rate", f"₹ {rate:,.2f}")
+        premium = rate * (sum_assured / 100000)
+        st.success(f"✅ {life_type} | {loan_type} | Age {age} | Tenure {tenure} yrs | Sum Assured ₹{sum_assured:,}")
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.metric("Rate (per ₹1,00,000)", f"₹ {rate:,.2f}")
+        with col_b:
+            st.metric("Premium (for selected Sum Assured)", f"₹ {premium:,.2f}")
     except Exception as e:
         st.error(f"Error: {e}")
 
@@ -186,11 +218,17 @@ st.divider()
 st.subheader("📂 Upload Member Data for Bulk Rate Lookup")
 
 if life_type == "Single Life":
-    st.markdown("Your Excel must have at least: **Name**, **Age**, **Tenure** (in years)")
+    st.markdown(
+        "Your Excel must have at least: **Name**, **Age**, **Tenure** (in years). "
+        "You may also include a **Sum Assured** column — if not provided, the Sum Assured "
+        "selected above will be used for all entries."
+    )
 else:
     st.markdown(
         "Your Excel must have at least: **Main Borrower** (Name, Age, Tenure) and "
-        "**Co Borrower** (Name, Age, Tenure) — in years."
+        "**Co Borrower** (Name, Age, Tenure) — in years. "
+        "You may also include a **Sum Assured** column — if not provided, the Sum Assured "
+        "selected above will be used for all entries."
     )
 
 st.warning("⚠️ Please make sure you have selected **Life Type** and **Loan Type** above before uploading your Excel file.")
@@ -219,6 +257,7 @@ if uploaded_file is not None:
             name_col = find_column(df, "Name")
             age_col = find_column(df, "Age")
             tenure_col = find_column(df, "Tenure")
+            sa_col = find_sum_assured_column(df)
 
             if not name_col or not age_col or not tenure_col:
                 raise ValueError("Excel must contain mandatory columns: Name, Age, Tenure")
@@ -235,14 +274,24 @@ if uploaded_file is not None:
             df[age_col] = df[age_col].round(0).astype('Int64')
             df[tenure_col] = df[tenure_col].clip(lower=min_t, upper=max_t)
 
+            if sa_col:
+                st.info(f"ℹ️ Found '{sa_col}' column — using per-row Sum Assured (capped to ₹{sa_min:,}–₹{sa_max:,}).")
+                df[sa_col] = pd.to_numeric(df[sa_col], errors='coerce').fillna(sum_assured)
+                df[sa_col] = df[sa_col].clip(lower=sa_min, upper=sa_max)
+                sa_series = df[sa_col]
+            else:
+                sa_series = pd.Series([sum_assured] * len(df), index=df.index)
+
             premiums = []
             statuses = []
-            for _, row in df.iterrows():
+            for idx, row in df.iterrows():
                 try:
                     r_age = int(row[age_col])
                     r_tenure = int(row[tenure_col])
                     r = get_rate(df_rates, tenure_map, r_age, r_tenure)
-                    premiums.append(round(r, 2))
+                    row_sa = float(sa_series.loc[idx])
+                    premium = round(r * (row_sa / 100000), 2)
+                    premiums.append(premium)
                     statuses.append("✅")
                 except Exception as e:
                     premiums.append(None)
@@ -282,6 +331,7 @@ if uploaded_file is not None:
         # ============================================
         else:
             mapping = map_joint_columns(df)
+            sa_col = find_sum_assured_column(df)
 
             required_keys = [
                 ('main', 'name'), ('main', 'age'), ('main', 'tenure'),
@@ -319,26 +369,37 @@ if uploaded_file is not None:
             df[main_tenure_col] = df[main_tenure_col].clip(lower=min_t, upper=max_t)
             df[co_tenure_col] = df[co_tenure_col].clip(lower=min_t, upper=max_t)
 
+            if sa_col:
+                st.info(f"ℹ️ Found '{sa_col}' column — using per-row Sum Assured (capped to ₹{sa_min:,}–₹{sa_max:,}).")
+                df[sa_col] = pd.to_numeric(df[sa_col], errors='coerce').fillna(sum_assured)
+                df[sa_col] = df[sa_col].clip(lower=sa_min, upper=sa_max)
+                sa_series = df[sa_col]
+            else:
+                sa_series = pd.Series([sum_assured] * len(df), index=df.index)
+
             premium_main_list = []
             premium_co_list = []
             total_list = []
             statuses = []
 
-            for _, row in df.iterrows():
+            for idx, row in df.iterrows():
                 row_status = "✅"
                 p_main = None
                 p_co = None
+                row_sa = float(sa_series.loc[idx])
                 try:
                     r_age = int(row[main_age_col])
                     r_tenure = int(row[main_tenure_col])
-                    p_main = round(get_rate(df_rates, tenure_map, r_age, r_tenure), 2)
+                    rate_main = get_rate(df_rates, tenure_map, r_age, r_tenure)
+                    p_main = round(rate_main * (row_sa / 100000), 2)
                 except Exception as e:
                     row_status = f"❌ Main Borrower: {e}"
 
                 try:
                     r_age = int(row[co_age_col])
                     r_tenure = int(row[co_tenure_col])
-                    p_co = round(get_rate(df_rates, tenure_map, r_age, r_tenure), 2)
+                    rate_co = get_rate(df_rates, tenure_map, r_age, r_tenure)
+                    p_co = round(rate_co * (row_sa / 100000), 2)
                 except Exception as e:
                     row_status = (row_status + f" | Co Borrower: {e}") if row_status != "✅" else f"❌ Co Borrower: {e}"
 
