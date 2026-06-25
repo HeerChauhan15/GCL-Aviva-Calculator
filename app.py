@@ -212,10 +212,10 @@ else:
     st.markdown("**Main Borrower**")
     mcol1, mcol2 = st.columns(2)
     with mcol1:
-        main_age = st.number_input("Main Borrower Age", min_value=18, max_value=65, value=30, step=1, key="main_age_manual")
+        main_age = st.number_input("Age", min_value=18, max_value=65, value=30, step=1, key="main_age_manual")
     with mcol2:
         main_tenure = st.number_input(
-            "Main Borrower Tenure", min_value=min_tenure, max_value=max_tenure,
+            "Tenure", min_value=min_tenure, max_value=max_tenure,
             value=min_tenure, step=1, key="main_tenure_manual"
         )
     st.caption("📅 Tenure is in Years")
@@ -223,10 +223,10 @@ else:
     st.markdown("**Co Borrower**")
     ccol1, ccol2 = st.columns(2)
     with ccol1:
-        co_age = st.number_input("Co Borrower Age", min_value=18, max_value=65, value=30, step=1, key="co_age_manual")
+        co_age = st.number_input("Age", min_value=18, max_value=65, value=30, step=1, key="co_age_manual")
     with ccol2:
         co_tenure = st.number_input(
-            "Co Borrower Tenure", min_value=min_tenure, max_value=max_tenure,
+            "Tenure", min_value=min_tenure, max_value=max_tenure,
             value=min_tenure, step=1, key="co_tenure_manual"
         )
     st.caption("📅 Tenure is in Years")
