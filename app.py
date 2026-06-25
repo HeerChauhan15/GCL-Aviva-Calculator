@@ -166,7 +166,6 @@ sum_assured = st.number_input(
     step=100000,
     help=f"For {loan_type}, Sum Assured must be between ₹{sa_min:,} and ₹{sa_max:,}."
 )
-st.caption(f"📌 Allowed range for {loan_type}: ₹{sa_min:,} – ₹{sa_max:,}")
 
 st.divider()
 
