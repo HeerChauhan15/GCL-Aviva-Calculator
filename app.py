@@ -175,38 +175,89 @@ st.divider()
 
 st.subheader("🔢 Manual Rate Lookup")
 
-col3, col4 = st.columns(2)
-with col3:
-    age = st.number_input("Enter Age", min_value=18, max_value=65, value=30, step=1)
-
 if loan_type == "Home Loan":
     min_tenure, max_tenure = 5, 25
 else:
     min_tenure, max_tenure = 2, 10
 
-with col4:
-    tenure = st.number_input(
-        "Enter Tenure",
-        min_value=min_tenure,
-        max_value=max_tenure,
-        value=min_tenure,
-        step=1
-    )
+if life_type == "Single Life":
+    col3, col4 = st.columns(2)
+    with col3:
+        age = st.number_input("Enter Age", min_value=18, max_value=65, value=30, step=1)
+    with col4:
+        tenure = st.number_input(
+            "Enter Tenure",
+            min_value=min_tenure,
+            max_value=max_tenure,
+            value=min_tenure,
+            step=1
+        )
+        st.caption("📅 Tenure is in Years")
+
+    if st.button("Get Rate", type="primary"):
+        try:
+            df_rates, tenure_map = load_rate_table(life_type, loan_type)
+            rate = get_rate(df_rates, tenure_map, age, tenure)
+            premium = rate * (sum_assured / 100000)
+            st.success(f"✅ {life_type} | {loan_type} | Age {age} | Tenure {tenure} yrs | Sum Assured ₹{sum_assured:,}")
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.metric("Rate (per ₹1,00,000)", f"₹ {rate:,.2f}")
+            with col_b:
+                st.metric("Premium (for selected Sum Assured)", f"₹ {premium:,.2f}")
+        except Exception as e:
+            st.error(f"Error: {e}")
+
+else:
+    st.markdown("**Main Borrower**")
+    mcol1, mcol2 = st.columns(2)
+    with mcol1:
+        main_age = st.number_input("Main Borrower Age", min_value=18, max_value=65, value=30, step=1, key="main_age_manual")
+    with mcol2:
+        main_tenure = st.number_input(
+            "Main Borrower Tenure", min_value=min_tenure, max_value=max_tenure,
+            value=min_tenure, step=1, key="main_tenure_manual"
+        )
     st.caption("📅 Tenure is in Years")
 
-if st.button("Get Rate", type="primary"):
-    try:
-        df_rates, tenure_map = load_rate_table(life_type, loan_type)
-        rate = get_rate(df_rates, tenure_map, age, tenure)
-        premium = rate * (sum_assured / 100000)
-        st.success(f"✅ {life_type} | {loan_type} | Age {age} | Tenure {tenure} yrs | Sum Assured ₹{sum_assured:,}")
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.metric("Rate (per ₹1,00,000)", f"₹ {rate:,.2f}")
-        with col_b:
-            st.metric("Premium (for selected Sum Assured)", f"₹ {premium:,.2f}")
-    except Exception as e:
-        st.error(f"Error: {e}")
+    st.markdown("**Co Borrower**")
+    ccol1, ccol2 = st.columns(2)
+    with ccol1:
+        co_age = st.number_input("Co Borrower Age", min_value=18, max_value=65, value=30, step=1, key="co_age_manual")
+    with ccol2:
+        co_tenure = st.number_input(
+            "Co Borrower Tenure", min_value=min_tenure, max_value=max_tenure,
+            value=min_tenure, step=1, key="co_tenure_manual"
+        )
+    st.caption("📅 Tenure is in Years")
+
+    if st.button("Get Rate", type="primary"):
+        try:
+            df_rates, tenure_map = load_rate_table(life_type, loan_type)
+
+            rate_main = get_rate(df_rates, tenure_map, main_age, main_tenure)
+            premium_main = rate_main * (sum_assured / 100000)
+
+            rate_co = get_rate(df_rates, tenure_map, co_age, co_tenure)
+            premium_co = rate_co * (sum_assured / 100000)
+
+            total_premium = premium_main + premium_co
+
+            st.success(
+                f"✅ {life_type} | {loan_type} | Sum Assured ₹{sum_assured:,} | "
+                f"Main Borrower: Age {main_age}, Tenure {main_tenure} yrs | "
+                f"Co Borrower: Age {co_age}, Tenure {co_tenure} yrs"
+            )
+
+            col_a, col_b, col_c = st.columns(3)
+            with col_a:
+                st.metric("Main Borrower Premium", f"₹ {premium_main:,.2f}")
+            with col_b:
+                st.metric("Co Borrower Premium", f"₹ {premium_co:,.2f}")
+            with col_c:
+                st.metric("Total Premium", f"₹ {total_premium:,.2f}")
+        except Exception as e:
+            st.error(f"Error: {e}")
 
 st.divider()
 
