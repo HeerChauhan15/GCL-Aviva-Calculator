@@ -191,7 +191,6 @@ else:
     st.markdown(
         "Your Excel must have at least: **Main Borrower** (Name, Age, Tenure) and "
         "**Co Borrower** (Name, Age, Tenure) — in years. "
-        "Column headers can be written flexibly, e.g. `Main Borrower Name`, `MB Name`, `Name1`, `Borrower 1 Name`, etc."
     )
 
 st.warning("⚠️ Please make sure you have selected **Life Type** and **Loan Type** above before uploading your Excel file.")
