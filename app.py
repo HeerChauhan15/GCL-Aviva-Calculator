@@ -16,6 +16,8 @@ st.set_page_config(
 st.title("💰 Aviva GCL Insurance Premium Calculator")
 st.markdown("Select plan details below")
 
+st.warning("⚠️ It is mandatory to select **Life Type** (Single Life / Joint Life) and **Loan Type** (Home Loan / LAP) before proceeding.")
+
 FILE_MAP = {
     ("Single Life", "Home Loan"): "Aviva Single HomeLoan.xlsx",
     ("Single Life", "LAP"):       "Aviva Single Lap.xlsx",
@@ -275,8 +277,8 @@ if life_type == "Single Life":
     )
 else:
     st.markdown(
-        "Your Excel must have at least: **Main Borrower** (Name, Age, Tenure) and "
-        "**Co Borrower** (Name, Age) — in years. "
+        "Your Excel must have at least: **Main Borrower** (Name, Age, Tenure in years) and "
+        "**Co Borrower** (Name, Age). "
         "Co Borrower's Tenure is **not required** — it is always assumed to be the same as "
         "Main Borrower's Tenure, since the loan tenure is shared between borrowers. "
         "If your file has a Co Borrower Tenure column, it will simply be ignored. "
