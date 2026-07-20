@@ -157,21 +157,15 @@ with col2:
     loan_type = st.selectbox("Select Loan Type", ["Home Loan", "LAP"])
 
 # ============================================
-# SUM ASSURED (mandatory) — rates in the backend files are per ₹1,00,000
+# SUM ASSURED RANGE — rates in the backend files are per ₹1,00,000
+# (The actual Sum Assured input widgets are now defined separately inside
+# the Manual and Bulk sections below, so changing one does not affect
+# the others.)
 # ============================================
 if loan_type == "Home Loan":
     sa_min, sa_max = 100000, 6000000
 else:
     sa_min, sa_max = 100000, 4000000
-
-sum_assured = st.number_input(
-    "Select Sum Assured (₹)",
-    min_value=sa_min,
-    max_value=sa_max,
-    value=sa_min,
-    step=100000,
-    help=f"For {loan_type}, Sum Assured must be between ₹{sa_min:,} and ₹{sa_max:,}."
-)
 
 st.divider()
 
@@ -200,12 +194,22 @@ if life_type == "Single Life":
         )
         st.caption("📅 Tenure is in Years")
 
+    sum_assured_manual_single = st.number_input(
+        "Select Sum Assured (₹)",
+        min_value=sa_min,
+        max_value=sa_max,
+        value=sa_min,
+        step=100000,
+        help=f"For {loan_type}, Sum Assured must be between ₹{sa_min:,} and ₹{sa_max:,}.",
+        key="sa_manual_single"
+    )
+
     if st.button("Get Rate", type="primary"):
         try:
             df_rates, tenure_map = load_rate_table(life_type, loan_type)
             rate = get_rate(df_rates, tenure_map, age, tenure)
-            premium = rate * (sum_assured / 100000)
-            st.success(f"✅ {life_type} | {loan_type} | Age {age} | Tenure {tenure} yrs | Sum Assured ₹{sum_assured:,}")
+            premium = rate * (sum_assured_manual_single / 100000)
+            st.success(f"✅ {life_type} | {loan_type} | Age {age} | Tenure {tenure} yrs | Sum Assured ₹{sum_assured_manual_single:,}")
             col_a, col_b = st.columns(2)
             with col_a:
                 st.metric("Rate (per ₹1,00,000)", f"₹ {rate:,.2f}")
@@ -237,6 +241,16 @@ else:
         )
     st.caption(f"📅 Tenure is in Years. Maximum age allowed at end of tenure is {MAX_AGE} — the lower of the two borrowers' allowed tenures is used for both.")
 
+    sum_assured_manual_joint = st.number_input(
+        "Select Sum Assured (₹)",
+        min_value=sa_min,
+        max_value=sa_max,
+        value=sa_min,
+        step=100000,
+        help=f"For {loan_type}, Sum Assured must be between ₹{sa_min:,} and ₹{sa_max:,}.",
+        key="sa_manual_joint"
+    )
+
     if st.button("Get Rate", type="primary"):
         try:
             df_rates, tenure_map = load_rate_table(life_type, loan_type)
@@ -254,10 +268,10 @@ else:
                 )
 
             rate_main = get_rate(df_rates, tenure_map, main_age, effective_tenure)
-            premium_main = rate_main * (sum_assured / 100000)
+            premium_main = rate_main * (sum_assured_manual_joint / 100000)
 
             rate_co = get_rate(df_rates, tenure_map, co_age, effective_tenure)
-            premium_co = rate_co * (sum_assured / 100000)
+            premium_co = rate_co * (sum_assured_manual_joint / 100000)
 
             total_premium = premium_main + premium_co
 
@@ -269,7 +283,7 @@ else:
                 )
 
             st.success(
-                f"✅ {life_type} | {loan_type} | Sum Assured ₹{sum_assured:,} | "
+                f"✅ {life_type} | {loan_type} | Sum Assured ₹{sum_assured_manual_joint:,} | "
                 f"Main Borrower: Age {main_age}, Tenure used {effective_tenure} yrs | "
                 f"Co Borrower: Age {co_age}, Tenure used {effective_tenure} yrs"
             )
@@ -296,7 +310,7 @@ if life_type == "Single Life":
     st.markdown(
         "Your Excel must have at least: **Name**, **Age**, **Tenure** (in years). "
         "You may also include a **Sum Assured** column — if not provided, the Sum Assured "
-        "selected above will be used for all entries."
+        "selected below will be used for all entries."
     )
 else:
     st.markdown(
@@ -305,8 +319,18 @@ else:
         f"Loan tenure is shared between borrowers — if either borrower's age + tenure would "
         f"exceed {MAX_AGE} years, the tenure is automatically capped for both borrowers. "
         "You may also include a **Sum Assured** column — if not provided, the Sum Assured "
-        "selected above will be used for all entries."
+        "selected below will be used for all entries."
     )
+
+sum_assured_bulk = st.number_input(
+    "Select Sum Assured (₹) for Bulk Upload (used only if the Excel has no Sum Assured column)",
+    min_value=sa_min,
+    max_value=sa_max,
+    value=sa_min,
+    step=100000,
+    help=f"For {loan_type}, Sum Assured must be between ₹{sa_min:,} and ₹{sa_max:,}.",
+    key="sa_bulk"
+)
 
 st.warning("⚠️ Please make sure you have selected **Life Type** and **Loan Type** above before uploading your Excel file.")
 
@@ -353,11 +377,11 @@ if uploaded_file is not None:
 
             if sa_col:
                 st.info(f"ℹ️ Found '{sa_col}' column — using per-row Sum Assured (capped to ₹{sa_min:,}–₹{sa_max:,}).")
-                df[sa_col] = pd.to_numeric(df[sa_col], errors='coerce').fillna(sum_assured)
+                df[sa_col] = pd.to_numeric(df[sa_col], errors='coerce').fillna(sum_assured_bulk)
                 df[sa_col] = df[sa_col].clip(lower=sa_min, upper=sa_max)
                 sa_series = df[sa_col]
             else:
-                sa_series = pd.Series([sum_assured] * len(df), index=df.index)
+                sa_series = pd.Series([sum_assured_bulk] * len(df), index=df.index)
 
             premiums = []
             statuses = []
@@ -453,11 +477,11 @@ if uploaded_file is not None:
 
             if sa_col:
                 st.info(f"ℹ️ Found '{sa_col}' column — using per-row Sum Assured (capped to ₹{sa_min:,}–₹{sa_max:,}).")
-                df[sa_col] = pd.to_numeric(df[sa_col], errors='coerce').fillna(sum_assured)
+                df[sa_col] = pd.to_numeric(df[sa_col], errors='coerce').fillna(sum_assured_bulk)
                 df[sa_col] = df[sa_col].clip(lower=sa_min, upper=sa_max)
                 sa_series = df[sa_col]
             else:
-                sa_series = pd.Series([sum_assured] * len(df), index=df.index)
+                sa_series = pd.Series([sum_assured_bulk] * len(df), index=df.index)
 
             premium_main_list = []
             premium_co_list = []
